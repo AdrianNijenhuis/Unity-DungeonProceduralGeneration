@@ -4,13 +4,21 @@ using UnityEngine;
 
 public class Manager : MonoBehaviour
 {
+    //public bool DEBUGG = true;
     public int tileSize;
     public GameObject tilePrefab;
+    public GameObject vTile;
+    public GameObject hTile;
     public GameObject diamondPrefab;
     public GameObject endPrefab;
     public GameObject tPrefab;
     public GameObject fwPrefab;
     public GameObject roomPrefab;
+    public GameObject NEcorner;
+    public GameObject SEcorner;
+    public GameObject SWcorner;
+    public GameObject NWcorner;
+
 
     public int maxHallDistance = 10;
     public int roomChance;
@@ -19,8 +27,8 @@ public class Manager : MonoBehaviour
     public int threeInterChance;
     public int fourInterChance;
 
-    public string[] cardinal = new string[] {"North", "East", "South", "West"};
-    public string[] OPcardinal = new string[] {"South", "West", "North", "East"};
+    int[] cardinal = new int[] {1, 2, 3, 4};
+    int[] OPcardinal = new int[] {3, 4, 1, 2};
 
     public int totalGenerations = 0;
     public int sizeLimit1;
@@ -32,11 +40,19 @@ public class Manager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        Debug.LogError("Game Start");
+
+        for (int i = 0; i < cardinal.Length; i++)
+        {
+            Debug.LogError(cardinal[i]);
+        }
+        
+        
         spawnPrefab(tilePrefab, 0, 0);
-        generate_hallway(cardinal[Random.Range(0, cardinal.Length)], 0, 0);
-        generate_hallway(cardinal[Random.Range(0, cardinal.Length)], 0, 0);
-        generate_hallway(cardinal[Random.Range(0, cardinal.Length)], 0, 0);
-        generate_hallway(cardinal[Random.Range(0, cardinal.Length)], 0, 0);
+        generate_hallway(cardinal[0], 0, 0);
+        generate_hallway(cardinal[1], 0, 0);
+        generate_hallway(cardinal[2], 0, 0);
+        generate_hallway(cardinal[3], 0, 0);
     }
 
     private void spawnPrefab(GameObject prefab, float posX, float posY)
@@ -45,6 +61,8 @@ public class Manager : MonoBehaviour
 
         if (!occupiedPositions.Contains(position))
         {
+            //Debug.LogError("Spawning Prefab");
+
             GameObject a = Instantiate(prefab) as GameObject;
             a.transform.position = position;
             a.transform.localScale *= tileSize;
@@ -52,8 +70,10 @@ public class Manager : MonoBehaviour
         }
     }
 
-    private void generate_hallway(string direction, float posX, float posY)
+    private void generate_hallway(int direction, float posX, float posY)
     {
+        //Debug.LogError("Generating Hallway");
+        int OPdirection = OPcardinal[direction - 1];
         int distance = Random.Range(3, maxHallDistance);
         int roomRoll = Random.Range(0, 100);
         int JointRoll = Random.Range(0, 100);
@@ -64,22 +84,22 @@ public class Manager : MonoBehaviour
 
         
 
-        if (direction == "North")
+        if (direction == 1)
         {
             dirX = 0;
             dirY = tileSize;
         }
-        else if (direction == "East")
+        else if (direction == 2)
         {
             dirX = tileSize;
             dirY = 0;
         }
-        else if (direction == "South")
+        else if (direction == 3)
         {
             dirX = 0;
             dirY = -tileSize;
         }
-        else if (direction == "West")
+        else if (direction == 4)
         {
             dirX = -tileSize;
             dirY = 0;
@@ -95,7 +115,15 @@ public class Manager : MonoBehaviour
             }
             else
             {
-                spawnPrefab(tilePrefab, posX, posY);
+                if (direction == 1 || direction == 3)
+                {
+                    spawnPrefab(vTile, posX, posY);
+                }
+                else
+                {
+                    spawnPrefab(hTile, posX, posY);
+                }
+                
                 posX += dirX;
                 posY += dirY;
                 i++;
@@ -110,23 +138,26 @@ public class Manager : MonoBehaviour
         
 
 
-        if (JointRoll <= endChance) //-2
+        if (JointRoll <= endChance) //dead end
         {
             spawnPrefab(tilePrefab, posX, posY);
         }
 
-        else if (JointRoll <= endChance + cornerChance) //-1
+        else if (JointRoll <= endChance + cornerChance) //corner
         {
-            spawnPrefab(tilePrefab, posX, posY);
-
-            int randEntry1 = GetValidDirection(direction);
-
+            int randEntry1 = GetValidDirection(direction, direction - 1);
+            placeCorner(OPdirection, cardinal[randEntry1], posX, posY);
             generate_hallway(cardinal[randEntry1], posX, posY);
+
+
+            // spawnPrefab(tilePrefab, posX, posY);
+            // int randEntry1 = GetValidDirection(direction);
+            // generate_hallway(cardinal[randEntry1], posX, posY);
         }
 
-        else if (JointRoll <= (endChance + cornerChance + threeInterChance))
+        else if (JointRoll <= (endChance + cornerChance + threeInterChance)) //t intersection
         {
-            //t intersection
+            
             spawnPrefab(tPrefab, posX, posY);
 
             int randEntry1 = GetValidDirection(direction);
@@ -138,9 +169,9 @@ public class Manager : MonoBehaviour
 
             
         }
-        else if (JointRoll <= (endChance + cornerChance + threeInterChance + fourInterChance))
+        else if (JointRoll <= (endChance + cornerChance + threeInterChance + fourInterChance)) //4 way intersection
         {
-            //4 way intersection
+            
             spawnPrefab(fwPrefab, posX, posY);
             for (int j = 0; j < cardinal.Length; j++)
             {
@@ -158,7 +189,7 @@ public class Manager : MonoBehaviour
         
     }
 
-    private int GetValidDirection(string currentDirection, int? excludedIndex = null)
+    private int GetValidDirection(int currentDirection, int? excludedIndex = null)
     {
         int rand = Random.Range(0, cardinal.Length);
 
@@ -186,6 +217,37 @@ public class Manager : MonoBehaviour
             threeInterChance = 10;
             fourInterChance = 10;
             roomChance = 25;
+        }
+    }
+
+    private void placeCorner(int OPdir, int NEWdir, float posX, float posY)
+    {
+        int total = OPdir + NEWdir;
+
+        //spawnPrefab(diamondPrefab, posX, posY);
+
+        if (total == 3)
+        {
+            spawnPrefab(NEcorner, posX, posY);
+        }
+        else if (total == 5)
+        {
+            if (OPdir == 1 || OPdir == 4)
+            {
+                spawnPrefab(NWcorner, posX, posY);
+            }
+            else
+            {
+                spawnPrefab(SEcorner, posX, posY);
+            }
+        }
+        else if (total == 7)
+        {
+            spawnPrefab(SWcorner, posX, posY);
+        }
+        else
+        {
+            spawnPrefab(diamondPrefab, posX, posY);
         }
     }
 }
